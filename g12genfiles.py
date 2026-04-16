@@ -21,6 +21,19 @@ def save_data(data):
     with open(DATA_FILE, 'w', encoding='utf-8') as f:
         json.dump(data, f, ensure_ascii=False, indent=4)
 
+# دالة تحويل الروابط إلى العرض النظيف (Preview/Embed)
+def get_clean_url(url):
+    if "drive.google.com" in url and "/view" in url:
+        # إزالة أي إضافات بعد view وتحويلها إلى preview
+        return url.split("/view")[0] + "/preview"
+    elif "youtube.com/watch?v=" in url:
+        vid_id = url.split("v=")[1].split("&")[0]
+        return f"https://www.youtube.com/embed/{vid_id}"
+    elif "youtu.be/" in url:
+        vid_id = url.split("youtu.be/")[1].split("?")[0]
+        return f"https://www.youtube.com/embed/{vid_id}"
+    return url
+
 data = load_data()
 
 # 3. الهيدر (الإنجليزية أساس ثم العربية)
@@ -28,7 +41,7 @@ st.markdown("<h1 style='text-align: center; color: #1a5276;'>NIFHAM Math - Grade
 st.markdown("<h3 style='text-align: center; color: #27ae60;' dir='rtl'>بوابة نفهم رياضيات - الصف الثاني عشر العام</h3>", unsafe_allow_html=True)
 st.markdown("---")
 
-# 4. نظام دخول المعلم (في القائمة الجانبية المخفية)
+# 4. نظام دخول المعلم
 with st.sidebar:
     st.markdown("### Teacher Login")
     password = st.text_input("Enter Password", type="password")
@@ -47,7 +60,7 @@ if is_admin:
             u_en = st.text_input("Unit Name (English)", placeholder="e.g., Unit 1: Limits")
             u_ar = st.text_input("اسم الوحدة (عربي)", placeholder="مثال: الوحدة الأولى: النهايات")
             if st.form_submit_button("Save Unit"):
-                if u_en: # التأكد من عدم ترك الحقل فارغاً
+                if u_en:
                     data["units"].append({"unit_en": u_en, "unit_ar": u_ar, "lessons": []})
                     save_data(data)
                     st.success("Unit added successfully!")
@@ -77,13 +90,12 @@ if is_admin:
         else:
             st.warning("Please add a unit first from the 'Add Unit' tab. | يرجى إضافة وحدة دراسية أولاً.")
 
-    # --- تبويب إضافة مادة (فيديو، ملف، ورقة عمل) ---
+    # --- تبويب إضافة مادة ---
     with tab3:
         unit_options = [u["unit_en"] for u in data["units"]]
         if unit_options:
             selected_unit_mat = st.selectbox("Select Unit", unit_options, key="mat_unit_select")
             
-            # البحث عن الدروس داخل الوحدة المختارة
             lesson_options = []
             for u in data["units"]:
                 if u["unit_en"] == selected_unit_mat:
@@ -121,7 +133,7 @@ if is_admin:
             
     st.markdown("---")
 
-# 6. واجهة الطالب (عرض المحتوى الديناميكي)
+# 6. واجهة الطالب 
 if not data["units"]:
     st.info("No content added yet. Teacher will add materials soon. | لم يتم إضافة محتوى بعد.")
 
@@ -137,6 +149,9 @@ for unit in data["units"]:
                 cols = st.columns(3)
                 col_idx = 0
                 for mat in lesson["materials"]:
+                    # تنظيف الرابط هنا
+                    clean_link = get_clean_url(mat['url'])
+                    
                     icon = "📄" if mat["type"] == "Worksheet" else "💻" if mat["type"] == "Presentation" else "🎥"
                     with cols[col_idx % 3]:
                         st.markdown(f"""
@@ -144,7 +159,7 @@ for unit in data["units"]:
                             <div style="font-size: 2.5rem; margin-bottom: 10px;">{icon}</div>
                             <h4 style="color: #1a5276; margin: 0 0 5px 0;">{mat['title_en']}</h4>
                             <p style="color: #27ae60; margin: 0 0 15px 0; font-size: 0.9rem;" dir="rtl">{mat['title_ar']}</p>
-                            <a href="{mat['url']}" target="_blank" style="background-color: #1a5276; color: white; padding: 8px 20px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold; font-size: 0.9rem;">Open | فتح</a>
+                            <a href="{clean_link}" target="_blank" style="background-color: #1a5276; color: white; padding: 8px 20px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold; font-size: 0.9rem;">Open | فتح</a>
                         </div>
                         """, unsafe_allow_html=True)
                     col_idx += 1
